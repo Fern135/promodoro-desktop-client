@@ -1,0 +1,2 @@
+plyer
+dbus-python; sys_platform == "linux"
