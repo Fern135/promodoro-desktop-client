@@ -1,5 +1,4 @@
-import asyncio 
-import time
+import asyncio
 from typing import cast # use this to literally cast what it's supposed to expect.
 
 from plyer import notification as _notification
@@ -13,12 +12,14 @@ default_rest  = 5
 yes_list = ["yes", "y"]
 
 
-def notify(title="ALERT", message="Time for a break"):
+def notify(title="ALERT", message="Time for a break", urgent=False):
     notification.notify(
         title=title,
         message=message,
-        timeout=10
+        timeout=10,
+        hints={"urgency": 2} if urgent else {},  # 2 = critical
     )
+
 
 async def countdown(minutes, label="Work"):
     total = minutes * 60
@@ -29,29 +30,47 @@ async def countdown(minutes, label="Work"):
     print(f"\r{label}: 00:00  done!")
 
 async def timer(sessions):
-    await countdown(default_timer, "Work")
-    notify("Pomodoro", "Time for a break")
-    await countdown(default_rest, "Break")
-    notify("Pomodoro", "Back to work")
+    for _ in range(1, sessions + 1):
+        await countdown(default_timer, "Work")
+        notify("Pomodoro", "Time for a break", urgent=True)
+        await countdown(default_rest, "Break")
+        notify("Pomodoro", "Back to work")
     
 async def main():
     while True:
-        usr = input("How many sessions would you be doing?\t")
-        usr = usr.strip()
-        usr = int(usr)
+        try:
+            usr = input("How many sessions would you be doing? (q to quit)\t").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nBye!")
+            return
+        
+        if usr in ("q", "quit"):
+            print("Bye!")
+            return
+        
+        try:
+            usr = int(usr)
+        except ValueError:
+            print("Please enter a whole number.")
+            continue
+
+        if usr < 1:
+            print("Enter at least 1 session.")
+            continue
 
         if usr > 10:
-            print("too many sessions, are you sure?")
-            check = input().lower().strip()
+            try:
+                check = input("Too many sessions, are you sure? (y/n) ").lower().strip()
+            except EOFError:
+                print("\nBye!")
+                return
+            if check not in yes_list:
+                continue
 
-            if check in yes_list:
-                await timer(usr)
-            else:
-                pass
-
-        else:
-            await timer(usr)
-
+        await timer(usr)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBye!")
